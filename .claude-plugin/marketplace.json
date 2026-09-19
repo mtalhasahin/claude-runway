@@ -1,0 +1,15 @@
+{
+  "name": "runway",
+  "description": "Runway: what is left of your rate-limit window, and what went into it.",
+  "owner": { "name": "mtalhasahin" },
+  "plugins": [
+    {
+      "name": "runway",
+      "source": "./",
+      "description": "How much of your rate-limit window is left, and what went into it.",
+      "version": "0.1.0",
+      "license": "MIT",
+      "keywords": ["tokens", "usage", "rate-limit", "cost", "ledger", "function-hooks"]
+    }
+  ]
+}

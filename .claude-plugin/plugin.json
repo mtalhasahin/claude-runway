@@ -1,0 +1,10 @@
+{
+  "name": "runway",
+  "version": "0.1.0",
+  "description": "How much of your rate-limit window is left, and what went into it. Records every turn's tokens; reports by day, project and model.",
+  "author": { "name": "mtalhasahin" },
+  "homepage": "https://github.com/mtalhasahin/claude-runway",
+  "repository": "https://github.com/mtalhasahin/claude-runway",
+  "license": "MIT",
+  "keywords": ["tokens", "usage", "rate-limit", "cost", "ledger", "function-hooks"]
+}
