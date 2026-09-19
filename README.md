@@ -39,6 +39,19 @@ total is marked `+` rather than quietly under-counting.
 
 ---
 
+## What it costs
+
+Recording costs nothing: it adds nothing to the system prompt or the tool list (`claude plugin
+details runway` reports `~0 tok` always-on), and the hook reads the usage the turn already carried,
+writes it to the store, and passes the turn through untouched.
+
+Asking for a report costs about **120–170 tokens** in `loud` mode, because the answer is a
+transcript row the model then reads — and keeps reading for the rest of the session. `/runway quiet`
+puts it in a pane instead and costs nothing at all, in the terminal. Details below under
+[loud and quiet](#loud-and-quiet).
+
+---
+
 ## What it records
 
 Every `turn.complete` carries the four token counts the API reported and the model that answered.
@@ -59,7 +72,7 @@ prompt prefix started changing between turns.
 
 | Command | What it does |
 |---|---|
-| `/runway` | the window, and what has gone into it |
+| `/runway` | the window, and what has gone into it (~120–170 tokens in `loud`) |
 | `/runway today` · `week` · `month` · `all` | report one span |
 | `/runway default <span>` | which span a bare `/runway` reports |
 | `/runway quiet` | report into a pane: no tokens, terminal only |
@@ -73,14 +86,20 @@ This is a real choice, not a preference, and it is worth understanding before yo
 
 **`loud`** (the default) answers the command with a transcript row. Every surface draws one —
 including the Claude desktop app, which draws no plugin UI at all — so this is the only way the
-report is visible everywhere. The cost is that a transcript row is context: the model reads it on
-its next turn, which is a few dozen tokens each time you ask.
+report is visible everywhere.
 
-**`quiet`** puts the report in a pane instead. That costs nothing at all, and only the terminal
-draws it.
+It costs tokens, and it is worth being precise about how many. A report is around 430 characters
+over 15 lines, so roughly **120–170 tokens**. And a transcript row is not a one-off: once it is
+there, it stays in the conversation and is re-read on every later turn of that session. Prompt
+caching makes the repeats cheap, but not free. A few `/runway` calls a day disappear into the noise;
+one after every turn would not.
 
-**Recording is free either way.** The ledger fills up on every surface, whichever mode you are in;
-only the report has a price, only when you ask for one.
+**`quiet`** puts the report in a pane instead. That costs nothing at all — nothing enters the
+transcript and the model never sees it — and only the terminal draws a pane.
+
+**Recording is free either way**, on every surface, in both modes. Only the report has a price, only
+when you ask for one. Which is the honest shape for a tool that measures token spend: the measuring
+costs nothing, and showing you the answer costs a little.
 
 ---
 
