@@ -131,11 +131,39 @@ describe('report', () => {
 
   test('projects and models are broken out, biggest first', () => {
     const lines = report(busy(), 'today', NOON);
-    const projects = lines.findIndex((l) => l.includes('alpha'));
+    const alpha = lines.findIndex((l) => l.includes('alpha'));
     const beta = lines.findIndex((l) => l.includes('beta'));
-    expect(projects).toBeGreaterThan(-1);
-    expect(beta).toBeGreaterThan(projects);
+    expect(alpha).toBeGreaterThan(-1);
+    expect(beta).toBeGreaterThan(alpha);
     expect(lines.join('\n')).toContain('opus-5');
+  });
+
+  test('each breakdown row carries its own price, not just its tokens', () => {
+    // The whole point of splitting by model: the same token count is worth
+    // five times as much on Opus as on Sonnet, and a row of tokens alone
+    // would hide exactly the comparison this is opened for.
+    const rows = report(busy(), 'today', NOON).filter((l) => l.startsWith('  '));
+    const opus = rows.find((l) => l.includes('opus-5')) ?? '';
+    const sonnet = rows.find((l) => l.includes('sonnet-5')) ?? '';
+    expect(opus).toContain('$');
+    expect(sonnet).toContain('$');
+    expect(opus).toContain('turns');
+  });
+
+  test('the model breakdown shows even when one model did all the work', () => {
+    let led: Ledger = { ...EMPTY };
+    led = record(led, { at: NOON, project: 'C:/src/solo', model: 'claude-opus-5', ms: 1000, tokens: tokens(10, 10) });
+    const lines = report(led, 'today', NOON).join('\n');
+    expect(lines).toContain('by model');
+    expect(lines).toContain('opus-5');
+  });
+
+  test('a row for an unpriced model shows a dash rather than a wrong number', () => {
+    let led: Ledger = { ...EMPTY };
+    led = record(led, { at: NOON, project: 'x', model: 'claude-unknown-9', ms: 0, tokens: tokens(5000, 5000) });
+    const row = report(led, 'today', NOON).find((l) => l.includes('unknown-9')) ?? '';
+    expect(row).toContain('\u2014');
+    expect(row).not.toContain('$');
   });
 
   test('the price is marked as a rate, never as a bill', () => {

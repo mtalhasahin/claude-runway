@@ -7,7 +7,7 @@
  */
 
 import { costOf, shortModel, type Tokens } from './pricing';
-import { groupBy, projectName, sum, within, type Ledger, type Span, type Totals } from './ledger';
+import { groupBy, projectName, sum, within, type Bucket, type Ledger, type Span, type Totals } from './ledger';
 
 /**
  * `412k`, `740k`, `1.2M`, `903` — a token count that fits a column.
@@ -57,10 +57,10 @@ const money = (usd: number): string => (usd >= 10 ? `$${usd.toFixed(0)}` : `$${u
  * A single unpriced model makes the whole figure a floor rather than a total,
  * and the report says `+` rather than pretending otherwise.
  */
-export function valueOf(ledger: Ledger, span: Span, now: number): { usd: number; complete: boolean } {
+export function valueOfBuckets(buckets: readonly Bucket[]): { usd: number; complete: boolean } {
   let usd = 0;
   let complete = true;
-  for (const b of within(ledger, span, now)) {
+  for (const b of buckets) {
     const priced = costOf(b.model, b as Tokens);
     if (priced === null) complete = false;
     else usd += priced;
@@ -68,7 +68,30 @@ export function valueOf(ledger: Ledger, span: Span, now: number): { usd: number;
   return { usd, complete };
 }
 
+export function valueOf(ledger: Ledger, span: Span, now: number): { usd: number; complete: boolean } {
+  return valueOfBuckets(within(ledger, span, now));
+}
+
 const SPAN_WORDS: Record<Span, string> = { today: 'today', week: 'last 7 days', month: 'last 30 days', all: 'all time' };
+
+/**
+ * One row of a breakdown: what it is, its tokens, its turns and its worth.
+ *
+ * The price sits beside the tokens because the two do not track each other —
+ * the same count is worth five times as much on Opus as on Sonnet, and a
+ * breakdown that showed only tokens would hide exactly the comparison someone
+ * opens this for.
+ */
+function groupRow(label: string, group: { buckets: readonly Bucket[]; totals: Totals }): string {
+  const value = valueOfBuckets(group.buckets);
+  const worth = value.usd > 0 ? `${money(value.usd)}${value.complete ? '' : '+'}` : '—';
+  return (
+    `  ${label.padEnd(20).slice(0, 20)}` +
+    ` ${compact(group.totals.tokens).padStart(6)}` +
+    ` ${String(group.totals.turns).padStart(4)} turns` +
+    ` ${worth.padStart(8)}`
+  );
+}
 
 function totalsLine(label: string, totals: Totals, value: { usd: number; complete: boolean }): string {
   const turns = `${totals.turns} turn${totals.turns === 1 ? '' : 's'}`;
@@ -116,19 +139,16 @@ export function report(ledger: Ledger, span: Span, now: number): string[] {
 
   const projects = groupBy(buckets, 'project').slice(0, 5);
   if (projects.length > 1) {
-    lines.push('');
-    for (const { name, totals: t } of projects) {
-      lines.push(`  ${projectName(name).padEnd(22).slice(0, 22)} ${compact(t.tokens).padStart(6)}`);
-    }
+    lines.push('', 'by project');
+    for (const g of projects) lines.push(groupRow(projectName(g.name), g));
   }
 
+  // Always broken out, even for a single model: which model answered is the
+  // one thing that changes what the same token count is worth, and a day that
+  // was all Opus reads very differently from one that was all Sonnet.
   const models = groupBy(buckets, 'model');
-  if (models.length > 1) {
-    lines.push('');
-    for (const { name, totals: t } of models.slice(0, 5)) {
-      lines.push(`  ${shortModel(name).padEnd(22).slice(0, 22)} ${compact(t.tokens).padStart(6)}`);
-    }
-  }
+  lines.push('', 'by model');
+  for (const g of models.slice(0, 6)) lines.push(groupRow(shortModel(g.name), g));
 
   // Cache reads are the cheap ones; a healthy session is mostly them, and a
   // number nobody shows you is the easiest one to leave broken.

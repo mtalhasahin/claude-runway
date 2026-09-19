@@ -139,8 +139,16 @@ export function within(ledger: Ledger, span: Span, now: number): Bucket[] {
   return ledger.buckets.filter((b) => b.day >= from);
 }
 
-/** Groups buckets by one of their keys and sums each group, biggest first. */
-export function groupBy(buckets: readonly Bucket[], by: 'project' | 'model' | 'day'): { name: string; totals: Totals }[] {
+export type Group = { name: string; buckets: Bucket[]; totals: Totals };
+
+/**
+ * Groups buckets by one of their keys and sums each group, biggest first.
+ *
+ * The group keeps its buckets as well as its totals: a price depends on which
+ * model earned each token, so anything that wants a group's worth has to go
+ * back to the buckets rather than to the sum.
+ */
+export function groupBy(buckets: readonly Bucket[], by: 'project' | 'model' | 'day'): Group[] {
   const groups = new Map<string, Bucket[]>();
   for (const b of buckets) {
     const name = b[by];
@@ -149,7 +157,7 @@ export function groupBy(buckets: readonly Bucket[], by: 'project' | 'model' | 'd
     else groups.set(name, [b]);
   }
   return [...groups.entries()]
-    .map(([name, group]) => ({ name, totals: sum(group) }))
+    .map(([name, group]) => ({ name, buckets: group, totals: sum(group) }))
     .sort((a, b) => b.totals.tokens - a.totals.tokens);
 }
 
